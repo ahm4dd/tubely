@@ -1,3 +1,4 @@
+import { Buffer } from "node:buffer";
 import { getBearerToken, validateJWT } from "../auth";
 import { respondWithJSON } from "./json";
 import { getVideo, updateVideo } from "../db/videos";
@@ -76,13 +77,11 @@ export async function handlerUploadThumbnail(cfg: ApiConfig, req: BunRequest) {
   if (video.userID !== userID) {
     throw new UserForbiddenError("Not authorized to upload thumbnail");
   }
+  
+  const thumbnailArrayBuffer = await file.arrayBuffer();
+  const thumbnail = Buffer.from(thumbnailArrayBuffer).toString("base64");
+  const thumbnailUrl = `data:${fileType};base64,${thumbnail}`;
 
-  videoThumbnails.set(videoId, {
-    data: await file.arrayBuffer(),
-    mediaType: fileType,
-  });
-
-  const thumbnailUrl = `http://localhost:${cfg.port}/api/thumbnails/${videoId}`;
   video.thumbnailURL = thumbnailUrl;
   updateVideo(cfg.db, video);
 
