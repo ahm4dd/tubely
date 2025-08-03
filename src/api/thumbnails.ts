@@ -1,4 +1,4 @@
-import { Buffer } from "node:buffer";
+import crypto from "node:crypto";
 import path from "node:path";
 import { getBearerToken, validateJWT } from "../auth";
 import { respondWithJSON } from "./json";
@@ -83,9 +83,10 @@ export async function handlerUploadThumbnail(cfg: ApiConfig, req: BunRequest) {
     throw new UserForbiddenError("Not authorized to upload thumbnail");
   }
   
-  await Bun.write(path.join(cfg.assetsRoot, `${videoId}.${fileType}`), file);
+  const randomName = crypto.randomBytes(32).toString("base64url");
 
-  const thumbnailUrl = `http://localhost:${cfg.port}/assets/${videoId}.${fileType}`;
+  await Bun.write(path.join(cfg.assetsRoot, `${randomName}.${fileType}`), file);
+  const thumbnailUrl = `http://localhost:${cfg.port}/assets/${randomName}.${fileType}`;
 
   video.thumbnailURL = thumbnailUrl;
   updateVideo(cfg.db, video);
