@@ -1,9 +1,12 @@
+import { rm } from "fs/promises";
+import path from "path";
 import { respondWithJSON } from "./json";
 import { type ApiConfig } from "../config";
 import type { BunRequest } from "bun";
 import { BadRequestError, UserForbiddenError, NotFoundError } from "./errors";
 import { getBearerToken, validateJWT } from "../auth";
 import { getVideo, updateVideo } from "../db/videos";
+import { uploadVideoToS3 } from "../s3";
 
 export async function handlerUploadVideo(cfg: ApiConfig, req: BunRequest) {
   const { videoId } = req.params as { videoId?: string };
@@ -39,21 +42,17 @@ export async function handlerUploadVideo(cfg: ApiConfig, req: BunRequest) {
     throw new BadRequestError("Wrong file format");
   }
 
-  await Bun.write(`${cfg.assetsRoot}/${videoId}.${fileType}`, file);
+  const tempFilePath = path.join("/tmp", `${videoId}.mp4`);
+  await Bun.write(tempFilePath, file);
 
-  await cfg.s3Client
-    .file(`${videoId}.${fileType}`, {
-      bucket: cfg.s3Bucket,
-      partSize: 10 * 1024 * 1024, // 10MB chunks
-      queueSize: 4, // 4 chunks
-      type: fileType,
-    })
-    .write(file, {});
+  let key = `${videoId}.mp4`;
+  await uploadVideoToS3(cfg, key, tempFilePath, "video/mp4");
 
-  const videoUrl = `https://${cfg.s3Bucket}.s3.${cfg.s3Region}.amazonaws.com/${videoId}.${fileType}`;
-
-  video.videoURL = videoUrl;
+  const videoURL = `https://${cfg.s3Bucket}.s3.${cfg.s3Region}.amazonaws.com/${key}`;
+  video.videoURL = videoURL;
   updateVideo(cfg.db, video);
 
-  return respondWithJSON(200, null);
+  await Promise.all([rm(tempFilePath, { force: true })]);
+
+  return respondWithJSON(200, video);
 }
