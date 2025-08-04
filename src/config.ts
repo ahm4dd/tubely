@@ -25,8 +25,8 @@ const s3Region = envOrThrow("S3_REGION");
 const s3CfDistribution = envOrThrow("S3_CF_DISTRO");
 const port = envOrThrow("PORT");
 const s3Client = new S3Client({
-  accessKeyId: envOrThrow("S3_ACCESS_KEY_ID"),
-  secretAccessKey: envOrThrow("S3_SECRET_ACCESS_KEY"),
+  accessKeyId: envOrThrow("AWS_ACCESS_KEY_ID"),
+  secretAccessKey: envOrThrow("AWS_SECRET_ACCESS_KEY"),
   bucket: s3Bucket,
   region: s3Region,
 });
