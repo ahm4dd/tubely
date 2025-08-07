@@ -55,7 +55,7 @@ export async function handlerUploadVideo(cfg: ApiConfig, req: BunRequest) {
   video.videoURL = videoURL;
   updateVideo(cfg.db, video);
 
-  await Promise.all([rm(tempFilePath, { force: true })]);
+  await Promise.all([rm(tempFilePath, { force: true }), rm(tempProcessedFilePath)]);
 
   return respondWithJSON(200, video);
 }
