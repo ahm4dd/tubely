@@ -7,6 +7,7 @@ import { BadRequestError, UserForbiddenError, NotFoundError } from "./errors";
 import { getBearerToken, validateJWT } from "../auth";
 import { getVideo, updateVideo } from "../db/videos";
 import { uploadVideoToS3 } from "../s3";
+import { getVideoAspectRatio } from "../helpers/videos";
 
 export async function handlerUploadVideo(cfg: ApiConfig, req: BunRequest) {
   const { videoId } = req.params as { videoId?: string };
@@ -44,8 +45,9 @@ export async function handlerUploadVideo(cfg: ApiConfig, req: BunRequest) {
 
   const tempFilePath = path.join("/tmp", `${videoId}.mp4`);
   await Bun.write(tempFilePath, file);
+  const videoAspectRatioAndOrientation = await getVideoAspectRatio(tempFilePath);
 
-  let key = `${videoId}.mp4`;
+  let key = `${videoAspectRatioAndOrientation.orientation}/${videoId}.mp4`;
   await uploadVideoToS3(cfg, key, tempFilePath, "video/mp4");
 
   const videoURL = `https://${cfg.s3Bucket}.s3.${cfg.s3Region}.amazonaws.com/${key}`;
