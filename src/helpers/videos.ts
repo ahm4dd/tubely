@@ -1,3 +1,5 @@
+import { file } from "bun";
+
 export type VideoOrientation = "landscape" | "portrait";
 export type VideoOrientationsWithAspectRatios = Record<VideoOrientation, number>;
 
@@ -71,4 +73,38 @@ export async function getVideoAspectRatio(
     orientation: orientation as VideoOrientation & "other",
     ratio: videoOrientations[orientation as VideoOrientation],
   };
+}
+
+export async function processVideoForFastStart(filePath: string) {
+  const newPath = filePath.replace(".mp4", ".processed.mp4");
+  
+  const proc = Bun.spawn(
+    [
+      "ffmpeg",
+      "-i",
+      filePath,
+      "-movflags",
+      "faststart",
+      "-map_metadata",
+      "0",
+      "-codec",
+      "copy",
+      "-f",
+      "mp4",
+      newPath
+    ],
+    {
+      stdout: "pipe",
+      stderr: "inherit",
+      cwd: "."
+    }
+  );
+  
+  const {stderr, stdout} = proc;
+
+  if ((await proc.exited) !== 0) {
+    throw new Error("Failed to process video for fast start.");
+  }
+
+  return newPath;
 }
