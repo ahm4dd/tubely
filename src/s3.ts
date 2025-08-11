@@ -17,7 +17,7 @@ export function generatePresignedURL(
   key: string,
   expireTime: number = 3600,
 ) {
-  return S3Client.presign(key, {
+  return cfg.s3Client.presign(key, {
     acl: "public-read",
     expiresIn: expireTime,
   });
