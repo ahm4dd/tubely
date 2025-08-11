@@ -1,7 +1,13 @@
 import { file } from "bun";
+import { ApiConfig } from "../config";
+import { Video } from "../db/videos";
+import { generatePresignedURL } from "../s3";
 
 export type VideoOrientation = "landscape" | "portrait";
-export type VideoOrientationsWithAspectRatios = Record<VideoOrientation, number>;
+export type VideoOrientationsWithAspectRatios = Record<
+  VideoOrientation,
+  number
+>;
 
 const videoOrientations = {
   landscape: 16 / 9,
@@ -77,7 +83,7 @@ export async function getVideoAspectRatio(
 
 export async function processVideoForFastStart(filePath: string) {
   const newPath = filePath.replace(".mp4", ".processed.mp4");
-  
+
   const proc = Bun.spawn(
     [
       "ffmpeg",
@@ -91,20 +97,25 @@ export async function processVideoForFastStart(filePath: string) {
       "copy",
       "-f",
       "mp4",
-      newPath
+      newPath,
     ],
     {
       stdout: "pipe",
       stderr: "inherit",
-      cwd: "."
-    }
+      cwd: ".",
+    },
   );
-  
-  const {stderr, stdout} = proc;
+
+  const { stderr, stdout } = proc;
 
   if ((await proc.exited) !== 0) {
     throw new Error("Failed to process video for fast start.");
   }
 
   return newPath;
+}
+
+export function dbVideoToSignedVideo(cfg: ApiConfig, video: Video) {
+  video.videoURL = generatePresignedURL(cfg, video.videoURL!);
+  return video;
 }

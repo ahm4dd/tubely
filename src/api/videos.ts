@@ -7,7 +7,11 @@ import { BadRequestError, UserForbiddenError, NotFoundError } from "./errors";
 import { getBearerToken, validateJWT } from "../auth";
 import { getVideo, updateVideo } from "../db/videos";
 import { uploadVideoToS3 } from "../s3";
-import { getVideoAspectRatio, processVideoForFastStart } from "../helpers/videos";
+import {
+  dbVideoToSignedVideo,
+  getVideoAspectRatio,
+  processVideoForFastStart,
+} from "../helpers/videos";
 
 export async function handlerUploadVideo(cfg: ApiConfig, req: BunRequest) {
   const { videoId } = req.params as { videoId?: string };
@@ -46,16 +50,22 @@ export async function handlerUploadVideo(cfg: ApiConfig, req: BunRequest) {
   const tempFilePath = path.join("/tmp", `${videoId}.mp4`);
   await Bun.write(tempFilePath, file);
   const tempProcessedFilePath = await processVideoForFastStart(tempFilePath);
-  const videoAspectRatioAndOrientation = await getVideoAspectRatio(tempProcessedFilePath);
+  const videoAspectRatioAndOrientation = await getVideoAspectRatio(
+    tempProcessedFilePath,
+  );
 
   let key = `${videoAspectRatioAndOrientation.orientation}/${videoId}.processed.mp4`;
   await uploadVideoToS3(cfg, key, tempProcessedFilePath, "video/mp4");
 
-  const videoURL = `https://${cfg.s3Bucket}.s3.${cfg.s3Region}.amazonaws.com/${key}`;
-  video.videoURL = videoURL;
+  video.videoURL = key;
   updateVideo(cfg.db, video);
 
-  await Promise.all([rm(tempFilePath, { force: true }), rm(tempProcessedFilePath)]);
+  await Promise.all([
+    rm(tempFilePath, { force: true }),
+    rm(tempProcessedFilePath),
+  ]);
+  
+  const signedVideo = dbVideoToSignedVideo(cfg, video);
 
-  return respondWithJSON(200, video);
+  return respondWithJSON(200, signedVideo);
 }
