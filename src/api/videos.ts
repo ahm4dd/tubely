@@ -8,7 +8,6 @@ import { getBearerToken, validateJWT } from "../auth";
 import { getVideo, updateVideo } from "../db/videos";
 import { uploadVideoToS3 } from "../s3";
 import {
-  dbVideoToSignedVideo,
   getVideoAspectRatio,
   processVideoForFastStart,
 } from "../helpers/videos";
@@ -57,15 +56,14 @@ export async function handlerUploadVideo(cfg: ApiConfig, req: BunRequest) {
   let key = `${videoAspectRatioAndOrientation.orientation}/${videoId}.processed.mp4`;
   await uploadVideoToS3(cfg, key, tempProcessedFilePath, "video/mp4");
 
-  video.videoURL = key;
+  const videoURL = `https://${cfg.s3CfDistribution}/${key}`;
+  video.videoURL = videoURL;
   updateVideo(cfg.db, video);
 
   await Promise.all([
     rm(tempFilePath, { force: true }),
     rm(tempProcessedFilePath),
   ]);
-  
-  const signedVideo = dbVideoToSignedVideo(cfg, video);
 
-  return respondWithJSON(200, signedVideo);
+  return respondWithJSON(200, video);
 }

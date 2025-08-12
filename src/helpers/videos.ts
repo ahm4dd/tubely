@@ -115,7 +115,3 @@ export async function processVideoForFastStart(filePath: string) {
   return newPath;
 }
 
-export function dbVideoToSignedVideo(cfg: ApiConfig, video: Video) {
-  video.videoURL = generatePresignedURL(cfg, video.videoURL!);
-  return video;
-}
